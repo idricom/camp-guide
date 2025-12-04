@@ -339,3 +339,195 @@ const sections = [
     content: {
       intro: 'Даже в лучших лагерях могут возникнуть проблемы. Важно знать, как на них реагировать и когда вмешиваться.',
       subsections:
+        {
+          title: 'Когда забирать ребенка раньше срока',
+          content: 'Уважительные причины досрочного выезда: серьезная болезнь ребенка, требующая лечения дома, семейные обстоятельства (болезнь родственника, похороны), действительно невыносимые условия в лагере (антисанитария, опасность), систематический буллинг, который администрация не может решить, категорический отказ ребенка находиться в лагере более 7 дней. Неуважительные причины: легкая простуда, которую можно вылечить на месте, временная тоска по дому в первые 2-3 дня, небольшой конфликт с ребенком, капризы ("мне скучно", "хочу домой"), желание родителей увидеть ребенка. Финансовые последствия: при досрочном выезде по желанию возврат пропорционален неиспользованным дням (но не всегда!), вычитаются организационные расходы, читайте договор внимательно! Психологические последствия: досрочный выезд без веской причины = негативный опыт, ребенок может бояться новых поездок, важно довести начатое до конца (если нет опасности).',
+        }
+      ]
+    }
+  }
+]
+
+export default async function GuidePage() {
+  const supabase = await createServerSupabaseClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect('/login')
+  }
+
+  // Получаем закладки пользователя
+  const { data: bookmarks } = await supabase
+    .from('bookmarks')
+    .select('*')
+    .eq('user_id', user.id)
+
+  const bookmarkedSections = bookmarks?.map(b => b.guide_section) || []
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar user={user} />
+      
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Заголовок */}
+        <div className="mb-12">
+          <Link 
+            href="/dashboard" 
+            className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4 transition-colors"
+          >
+            ← Вернуться в личный кабинет
+          </Link>
+          
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-8">
+            <div className="flex-1">
+              <h1 className="text-4xl md:text-5xl font-display font-bold text-gray-900 mb-4">
+                Выбираем лагерь правильно
+              </h1>
+              <p className="text-xl text-gray-600 mb-6">
+                Полный гид для родителей по выбору детского лагеря в России. 
+                12 подробных разделов с практическими советами от экспертов ООО Резорт-Юг.
+              </p>
+              
+              <div className="flex flex-wrap gap-3">
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+                  12 разделов
+                </span>
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                  {bookmarkedSections.length} закладок
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <GuideSearch sections={sections} />
+              <ExportPDF />
+            </div>
+          </div>
+        </div>
+
+        {/* Навигация по разделам */}
+        <Card className="p-6 mb-8 bg-gradient-to-r from-blue-50 to-cyan-50">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Содержание</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {sections.map((section, index) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className="flex items-center p-3 rounded-lg hover:bg-white/80 transition-colors group"
+              >
+                <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                  <section.icon className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Раздел {index + 1}</div>
+                  <div className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                    {section.title}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </Card>
+
+        {/* Разделы гида */}
+        <div className="space-y-12">
+          {sections.map((section, index) => (
+            <section key={section.id} id={section.id} className="scroll-mt-20">
+              <Card className="p-8 md:p-12">
+                {/* Заголовок раздела */}
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-14 h-14 bg-gradient-primary rounded-xl flex items-center justify-center flex-shrink-0">
+                      <section.icon className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-primary-600 mb-2">
+                        Раздел {index + 1} из 12
+                      </div>
+                      <h2 className="text-3xl font-display font-bold text-gray-900 mb-3">
+                        {section.title}
+                      </h2>
+                    </div>
+                  </div>
+                  <BookmarkButton 
+                    sectionId={section.id} 
+                    isBookmarked={bookmarkedSections.includes(section.id)}
+                  />
+                </div>
+
+                {/* Контент раздела */}
+                <div className="prose prose-lg max-w-none">
+                  <p className="text-xl text-gray-700 leading-relaxed mb-8">
+                    {section.content.intro}
+                  </p>
+
+                  {section.content.subsections.map((subsection, subIndex) => (
+                    <div key={subIndex} className="mb-8">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                        {subsection.title}
+                      </h3>
+                      <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                        {subsection.content}
+                      </div>
+                      {subsection.examples && (
+                        <div className="mt-3 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                          <p className="text-sm text-blue-900 italic">{subsection.examples}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </section>
+          ))}
+        </div>
+
+        {/* Заключение */}
+        <Card className="p-8 mt-12 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
+          <div className="text-center">
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Поздравляем!
+            </h2>
+            <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-6">
+              Вы изучили полный гид по выбору детского лагеря. Теперь вы готовы сделать 
+              осознанный выбор и подарить ребенку незабываемое лето!
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Button variant="accent" asChild>
+                <Link href="/mini-course">
+                  Пройти мини-курс
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/dashboard">
+                  В личный кабинет
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Контакты */}
+        <Card className="p-6 mt-8 bg-gray-100">
+          <h3 className="font-bold text-gray-900 mb-3">Остались вопросы?</h3>
+          <p className="text-gray-700 mb-4">
+            Команда ООО Резорт-Юг всегда готова помочь с выбором лагеря. 
+            Свяжитесь с нами для индивидуальной консультации.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <Button size="sm" variant="primary">
+              Связаться с нами
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <a href="https://resort-south.ru" target="_blank" rel="noopener noreferrer">
+                Посетить наш сайт
+              </a>
+            </Button>
+          </div>
+        </Card>
+      </main>
+    </div>
+  )
+}
